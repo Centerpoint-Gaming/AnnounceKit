@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "AnnounceKit",
+  "version": "0.1.0",
+  "description": "Generate announcement thumbnails and banners for Steam",
+  "permissions": ["storage", "activeTab"],
+  "host_permissions": [
+    "https://store.steampowered.com/*",
+    "https://partner.steamgames.com/*",
+    "https://steamcommunity.com/*",
+    "https://cdn.akamai.steamstatic.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "service-worker.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://store.steampowered.com/app/*",
+        "https://partner.steamgames.com/apps/*",
+        "https://steamcommunity.com/games/*",
+        "https://steamcommunity.com/app/*",
+        "https://steamcommunity.com/ogg/*/partnerevents/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
