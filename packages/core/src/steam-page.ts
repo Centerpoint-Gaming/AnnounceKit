@@ -38,14 +38,30 @@ export interface SteamEventJsonData {
   localizedCapsuleImage: (string | null)[];
 }
 
-export interface PageContextData {
+/**
+ * Canonical, serializable page context shape. This is what crosses the
+ * message boundary between content script, service worker, and popup.
+ *
+ * Mediums may extend this with live handles (e.g. HTMLElement refs in the
+ * content script) but the serialized form is the source of truth everywhere
+ * else.
+ */
+export interface PageContext {
   isAnnouncementEditor: boolean;
   appId: string | null;
   pageVariant: PageVariant;
+  detectedAt: number;
+  editorState: {
+    hasTitleField: boolean;
+    hasSubtitleField: boolean;
+    hasBodyField: boolean;
+    existingTitle: string;
+    existingSubtitle: string;
+    existingBody: string;
+  };
   eventGid: string | null;
   event: SteamEventData | null;
   communityConfig: SteamCommunityConfig | null;
-  detectedAt: number;
 }
 
 /**

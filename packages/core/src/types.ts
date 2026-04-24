@@ -1,9 +1,18 @@
 import type { Palette } from './palette.js';
 
+/**
+ * A brand asset (logo, example thumbnail) stored in a GameProfile.
+ *
+ * Binaries are referenced by content hash (SHA-256) — never inlined as data
+ * URLs — so the profile stays small enough for chrome.storage.local and the
+ * future BinaryStore contract owns the actual byte storage.
+ */
 export interface StoredAsset {
   id: string;
   name: string;
-  dataUrl: string;
+  binaryRef: string;
+  mimeType: string;
+  bytes: number;
 }
 
 export interface StoreAssets {
@@ -29,16 +38,4 @@ export interface GameProfile {
   brand: GameBrand;
   createdAt: number;
   lastUsedAt: number;
-}
-
-export interface SteamAppDetails {
-  appId: string;
-  name: string;
-  shortDescription: string;
-  genres: string[];
-  categories: string[];
-  headerImage: string;
-  screenshots: Array<{ id: number; pathFull: string }>;
-  background: string | null;
-  capsuleImage: string | null;
 }

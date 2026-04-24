@@ -6,7 +6,20 @@
     "packages/*",
     "extensions/*"
   ],
+  "scripts": {
+    "build:ext": "npm run build -w @announcekit/chrome-extension",
+    "build:ext:vite": "npm run build:vite -w @announcekit/chrome-extension",
+    "refresh-fixtures": "tsx scripts/refresh-fixtures.ts",
+    "verify": "npm run verify:types && npm run verify:unit && npm run verify:e2e",
+    "verify:types": "tsc --noEmit -p packages/core && tsc --noEmit -p extensions/chrome",
+    "verify:unit": "npm run test -w @announcekit/core",
+    "verify:e2e": "npm run build:ext:vite && playwright test"
+  },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "jsdom": "^29.0.2",
+    "sharp": "^0.34.5",
+    "tsx": "^4.21.0",
     "typescript": "^6.0.3",
     "vitest": "^4.1.5"
   }

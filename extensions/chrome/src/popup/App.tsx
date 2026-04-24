@@ -1,39 +1,118 @@
-import { useEffect, useState } from 'react';
-import type { GameProfile, Palette, PaletteError, Result, StoreMetadata } from '@announcekit/core';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { GameProfile, Palette, PaletteError, Result, StoreMetadata, CacheEntry } from '@announcekit/core';
+import { cacheKeys } from '@announcekit/core';
 import type { SerializedPageContext } from '../content/scraper';
-import { getGameProfile, saveGameProfile } from '../storage/gameProfiles';
+import { getGameProfile, saveGameProfile, invalidateGameProfile } from '../storage/gameProfiles';
+import { buildContextCache } from '../storage/contextCache';
 import { GameCard } from './components/GameCard';
 import { DebugView } from './components/DebugView';
+import { GameSummary } from './components/GameSummary';
+import { ActionBar } from './components/ActionBar';
 
 type AppState =
   | { status: 'no-steam' }
   | { status: 'loading'; appId: string }
-  | { status: 'ready'; profile: GameProfile; pageContext: SerializedPageContext }
+  | { status: 'ready'; profile: GameProfile; pageContext: SerializedPageContext; cachedAt: number; source: string }
   | { status: 'error'; message: string; pageContext?: SerializedPageContext };
 
-type ViewMode = 'main' | 'debug';
+type ViewMode = 'main' | 'details' | 'debug';
 
 export default function App() {
+  // Construct the cache once per popup mount and thread it down — no singleton.
+  const cache = useMemo(() => buildContextCache(), []);
+
   const [state, setState] = useState<AppState>({ status: 'loading', appId: '' });
   const [viewMode, setViewMode] = useState<ViewMode>('main');
   const [storeMetadata, setStoreMetadata] = useState<StoreMetadata | undefined>();
+  const [refreshing, setRefreshing] = useState(false);
+  const [cacheEntry, setCacheEntry] = useState<CacheEntry<GameProfile> | undefined>();
+
+  // ── Fetch fresh data from Steam API + palette extraction ────────────────
+
+  const fetchFresh = useCallback(async (appId: string, pageContext: SerializedPageContext) => {
+    const details = await chrome.runtime.sendMessage({
+      type: 'FETCH_GAME_DETAILS',
+      appId,
+    });
+
+    if (!details || details.error) {
+      throw new Error(details?.error ?? 'Failed to fetch game details');
+    }
+
+    if (details.appId && details.fetchedAt) {
+      setStoreMetadata(details as StoreMetadata);
+      await cache.set(cacheKeys.storeMetadata(appId), details, {
+        source: 'fetchStoreMetadata',
+      });
+    }
+
+    const paletteImageUrl =
+      details.assets?.capsule ?? details.capsuleImage ?? details.assets?.header ?? details.headerImage ?? '';
+    const paletteResult: Result<Palette, PaletteError> = await chrome.runtime.sendMessage({
+      type: 'EXTRACT_PALETTE',
+      imageUrl: paletteImageUrl,
+    });
+
+    if (!paletteResult?.ok) {
+      throw new Error(paletteResult?.error?.message ?? 'Palette extraction failed');
+    }
+
+    const profile: GameProfile = {
+      appId,
+      name: details.name,
+      shortDescription: details.shortDescription,
+      tags: [
+        ...(details.tags ?? []),
+        ...(details.genres ?? []),
+        ...(details.categories ?? []),
+      ],
+      storeAssets: {
+        headerCapsule: details.assets?.header ?? details.headerImage ?? '',
+        heroImage: details.assets?.background ?? details.background ?? null,
+        screenshots: details.assets?.screenshots ?? details.screenshots?.map((s: { pathFull: string }) => s.pathFull) ?? [],
+        logo: details.assets?.capsule ?? details.capsuleImage ?? null,
+      },
+      palette: paletteResult.data,
+      brand: {
+        logos: [],
+        colors: [],
+        exampleThumbnails: [],
+      },
+      createdAt: Date.now(),
+      lastUsedAt: Date.now(),
+    };
+
+    await saveGameProfile(cache, profile);
+
+    const entry = await getGameProfile(cache, appId);
+    if (entry) {
+      setCacheEntry(entry);
+    }
+
+    setState({
+      status: 'ready',
+      profile,
+      pageContext,
+      cachedAt: Date.now(),
+      source: 'fetchStoreMetadata',
+    });
+  }, [cache]);
+
+  // ── Initial load ───────────────────────────────────────────────────────
 
   useEffect(() => {
     async function init() {
       try {
-        // Get the active tab
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         if (!tab?.id) {
           setState({ status: 'no-steam' });
           return;
         }
 
-        // Request page context from content script
         let pageContext: SerializedPageContext;
         try {
           pageContext = await chrome.tabs.sendMessage(tab.id, { type: 'GET_PAGE_CONTEXT' });
         } catch {
-          // Content script not injected (not on a Steam page)
           setState({ status: 'no-steam' });
           return;
         }
@@ -46,79 +125,25 @@ export default function App() {
         const appId = pageContext.appId;
         setState({ status: 'loading', appId });
 
-        // Check if we already have this game saved. Skip legacy profiles that
-        // pre-date the Palette contract — they'll be rebuilt from the new flow.
-        const existing = await getGameProfile(appId);
-        if (existing && existing.palette?.primary) {
-          setState({ status: 'ready', profile: existing, pageContext });
-          return;
+        const cachedMeta = await cache.get<StoreMetadata>(cacheKeys.storeMetadata(appId));
+        if (cachedMeta) {
+          setStoreMetadata(cachedMeta.data);
         }
 
-        // Fetch from Steam API via service worker
-        const details = await chrome.runtime.sendMessage({
-          type: 'FETCH_GAME_DETAILS',
-          appId,
-        });
-
-        if (!details || details.error) {
+        const entry = await getGameProfile(cache, appId);
+        if (entry && entry.data.palette?.primary) {
+          setCacheEntry(entry);
           setState({
-            status: 'error',
-            message: details?.error ?? 'Failed to fetch game details',
+            status: 'ready',
+            profile: entry.data,
             pageContext,
+            cachedAt: entry.cachedAt,
+            source: entry.source,
           });
           return;
         }
 
-        // Stash the raw store metadata for the debug view
-        if (details.appId && details.fetchedAt) {
-          setStoreMetadata(details as StoreMetadata);
-        }
-
-        // Extract palette via service worker. The capsule art is the most
-        // reliable source — it's always present and tuned for visual identity.
-        const paletteImageUrl =
-          details.assets?.capsule ?? details.capsuleImage ?? details.assets?.header ?? details.headerImage ?? '';
-        const paletteResult: Result<Palette, PaletteError> = await chrome.runtime.sendMessage({
-          type: 'EXTRACT_PALETTE',
-          imageUrl: paletteImageUrl,
-        });
-
-        if (!paletteResult?.ok) {
-          setState({
-            status: 'error',
-            message: paletteResult?.error?.message ?? 'Palette extraction failed',
-            pageContext,
-          });
-          return;
-        }
-
-        const profile: GameProfile = {
-          appId,
-          name: details.name,
-          shortDescription: details.shortDescription,
-          tags: [
-            ...(details.tags ?? []),
-            ...(details.genres ?? []),
-            ...(details.categories ?? []),
-          ],
-          storeAssets: {
-            headerCapsule: details.assets?.header ?? details.headerImage ?? '',
-            heroImage: details.assets?.background ?? details.background ?? null,
-            screenshots: details.assets?.screenshots ?? details.screenshots?.map((s: { pathFull: string }) => s.pathFull) ?? [],
-            logo: details.assets?.capsule ?? details.capsuleImage ?? null,
-          },
-          palette: paletteResult.data,
-          brand: {
-            logos: [],
-            colors: [],
-            exampleThumbnails: [],
-          },
-          createdAt: Date.now(),
-          lastUsedAt: Date.now(),
-        };
-
-        await saveGameProfile(profile);
-        setState({ status: 'ready', profile, pageContext });
+        await fetchFresh(appId, pageContext);
       } catch (err) {
         setState({
           status: 'error',
@@ -128,7 +153,33 @@ export default function App() {
     }
 
     init();
-  }, []);
+  }, [cache, fetchFresh]);
+
+  // ── Refresh handler ────────────────────────────────────────────────────
+
+  const handleRefresh = useCallback(async () => {
+    if (state.status !== 'ready' || refreshing) return;
+
+    setRefreshing(true);
+    try {
+      const appId = state.profile.appId;
+      await invalidateGameProfile(cache, appId);
+
+      await cache.invalidate(cacheKeys.storeMetadata(appId));
+
+      await fetchFresh(appId, state.pageContext);
+    } catch (err) {
+      setState({
+        status: 'error',
+        message: err instanceof Error ? err.message : 'Refresh failed',
+        pageContext: state.pageContext,
+      });
+    } finally {
+      setRefreshing(false);
+    }
+  }, [cache, state, refreshing, fetchFresh]);
+
+  // ── Derived values ─────────────────────────────────────────────────────
 
   const pageContext =
     state.status === 'ready'
@@ -170,13 +221,30 @@ export default function App() {
         </div>
       </div>
 
-      {/* Debug view (shown for any state that has pageContext) */}
+      {/* Debug view */}
       {viewMode === 'debug' && pageContext && (
         <DebugView
           context={pageContext}
           profile={state.status === 'ready' ? state.profile : undefined}
           storeMetadata={storeMetadata}
+          cacheEntry={cacheEntry}
         />
+      )}
+
+      {/* Details view — full GameCard */}
+      {viewMode === 'details' && state.status === 'ready' && (
+        <div>
+          <button
+            onClick={() => setViewMode('main')}
+            className="flex items-center gap-1 text-xs text-gray-500 hover:text-white transition-colors mb-3"
+          >
+            <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M8 2L4 6l4 4" />
+            </svg>
+            Back
+          </button>
+          <GameCard profile={state.profile} />
+        </div>
       )}
 
       {/* Main view */}
@@ -219,7 +287,7 @@ export default function App() {
             <>
               {/* Editor context banner */}
               {pageContext?.isAnnouncementEditor && (
-                <div className="mb-4 bg-blue-900/30 border border-blue-800 rounded-lg p-3">
+                <div className="mb-3 bg-blue-900/30 border border-blue-800 rounded-lg p-3">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
                     <span className="text-xs font-semibold text-blue-300 uppercase tracking-wide">
@@ -239,7 +307,21 @@ export default function App() {
                 </div>
               )}
 
-              <GameCard profile={state.profile} />
+              {/* Game summary card */}
+              <GameSummary
+                profile={state.profile}
+                cachedAt={state.cachedAt}
+                source={state.source}
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                onViewDetails={() => setViewMode('details')}
+              />
+
+              {/* Primary CTA */}
+              <ActionBar
+                isEditor={!!pageContext?.isAnnouncementEditor}
+                announcementTitle={pageContext?.editorState.existingTitle}
+              />
             </>
           )}
         </>

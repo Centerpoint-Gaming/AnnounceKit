@@ -1,10 +1,11 @@
 import type { SerializedPageContext } from '../../content/scraper';
-import type { GameProfile, StoreMetadata } from '@announcekit/core';
+import type { GameProfile, StoreMetadata, CacheEntry } from '@announcekit/core';
 
 interface DebugViewProps {
   context: SerializedPageContext;
   profile?: GameProfile;
   storeMetadata?: StoreMetadata;
+  cacheEntry?: CacheEntry<GameProfile>;
 }
 
 function StatusBadge({ value, label }: { value: boolean; label: string }) {
@@ -71,7 +72,7 @@ function TagList({ tags, label }: { tags: string[]; label: string }) {
   );
 }
 
-export function DebugView({ context, profile, storeMetadata }: DebugViewProps) {
+export function DebugView({ context, profile, storeMetadata, cacheEntry }: DebugViewProps) {
   const staleness = Date.now() - context.detectedAt;
   const stalenessLabel =
     staleness < 5000
@@ -93,6 +94,7 @@ export function DebugView({ context, profile, storeMetadata }: DebugViewProps) {
         <StatusBadge value={!!context.communityConfig} label="Community Config" />
         <StatusBadge value={!!profile} label="Game Profile" />
         <StatusBadge value={!!storeMetadata} label="Store Metadata" />
+        <StatusBadge value={!!cacheEntry} label="Cache Entry" />
       </div>
 
       {/* Page Detection */}
@@ -110,6 +112,27 @@ export function DebugView({ context, profile, storeMetadata }: DebugViewProps) {
           }
         />
       </Section>
+
+      {/* Cache Entry */}
+      {cacheEntry && (
+        <Section title="Cache Entry">
+          <Field label="Schema Version" value={cacheEntry.schemaVersion} />
+          <Field label="Cached At" value={new Date(cacheEntry.cachedAt).toLocaleString()} />
+          <Field label="Expires At" value={cacheEntry.expiresAt ? new Date(cacheEntry.expiresAt).toLocaleString() : 'never'} />
+          <Field label="Source" value={cacheEntry.source} />
+          <Field label="Age" value={
+            (() => {
+              const mins = Math.floor((Date.now() - cacheEntry.cachedAt) / 60000);
+              if (mins < 1) return 'less than a minute';
+              if (mins < 60) return `${mins} minute${mins === 1 ? '' : 's'}`;
+              const hrs = Math.floor(mins / 60);
+              if (hrs < 24) return `${hrs} hour${hrs === 1 ? '' : 's'}`;
+              const days = Math.floor(hrs / 24);
+              return `${days} day${days === 1 ? '' : 's'}`;
+            })()
+          } />
+        </Section>
+      )}
 
       {/* Editor State */}
       <Section title="Editor State">
@@ -279,7 +302,7 @@ export function DebugView({ context, profile, storeMetadata }: DebugViewProps) {
       {/* Raw JSON */}
       <Section title="Raw JSON" defaultOpen={false}>
         <div className="text-xs text-gray-400 bg-gray-800 rounded px-2 py-1.5 font-mono max-h-48 overflow-y-auto whitespace-pre-wrap break-all">
-          {JSON.stringify({ pageContext: context, storeMetadata, gameProfile: profile }, null, 2)}
+          {JSON.stringify({ pageContext: context, storeMetadata, gameProfile: profile, cacheEntry: cacheEntry ? { schemaVersion: cacheEntry.schemaVersion, cachedAt: cacheEntry.cachedAt, expiresAt: cacheEntry.expiresAt, source: cacheEntry.source } : null }, null, 2)}
         </div>
       </Section>
     </div>

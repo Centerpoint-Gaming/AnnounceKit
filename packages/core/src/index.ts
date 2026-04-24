@@ -3,12 +3,11 @@ export type {
   GameBrand,
   StoreAssets,
   StoredAsset,
-  SteamAppDetails,
 } from './types.js';
 
 export type {
   PageVariant,
-  PageContextData,
+  PageContext,
   SteamCommunityConfig,
   SteamEventData,
   SteamEventJsonData,
@@ -29,7 +28,27 @@ export type {
 export type { Palette, PaletteError, PaletteErrorReason } from './palette.js';
 export { extractPaletteFromImageData } from './palette.js';
 
-export { parseSteamAppDetails } from './steam-api.js';
+export type {
+  CacheEntry,
+  CacheEntryType,
+  CacheKey,
+  CacheSize,
+  PruneResult,
+  ContextCache,
+  CacheSetOptions,
+  StorageAdapter,
+  CreateContextCacheOptions,
+  CreateMemoryCacheOptions,
+} from './cache.js';
+export {
+  cacheKeys,
+  CACHE_SCHEMA_VERSIONS,
+  CACHE_MAX_BYTES,
+  MemoryCache,
+  createMemoryCache,
+  createContextCache,
+} from './cache.js';
+
 export { fetchStoreMetadata } from './store-metadata.js';
 export {
   parseCommunityConfig,

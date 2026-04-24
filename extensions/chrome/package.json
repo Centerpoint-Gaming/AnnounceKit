@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite build --watch",
     "build": "tsc && vite build && vite build --config vite.content.config.ts && vite build --config vite.sw.config.ts",
+    "build:vite": "vite build && vite build --config vite.content.config.ts && vite build --config vite.sw.config.ts",
     "preview": "vite preview"
   },
   "dependencies": {

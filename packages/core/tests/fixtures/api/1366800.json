@@ -1,0 +1,182 @@
+{
+  "1366800": {
+    "success": true,
+    "data": {
+      "type": "game",
+      "name": "Crosshair X",
+      "steam_appid": 1366800,
+      "required_age": 0,
+      "is_free": false,
+      "detailed_description": "<h2 class=\"bb_tag\" >Dominate Every Match with the Perfect Crosshair</h2><br><p class=\"bb_paragraph\" >Crosshair X gives you a decisive competitive edge in every FPS, tactical shooter, and battle royale you play. Whether you're grinding ranked matches, clutching intense rounds, or pushing squads in open-world combat — your crosshair should never hold you back.</p><br><p class=\"bb_paragraph\" ><strong>Trusted by millions of players</strong> and rated Very Positive with over 40,000 reviews, Crosshair X is the most popular crosshair overlay on Steam.</p><h2 class=\"bb_tag\" >Why Competitive Players Choose Crosshair X</h2><ul class=\"bb_ul\"><li><strong>Thousands of Community Designs:</strong> Browse an ever-growing library of reticles shared by the Crosshair X community — including pro player replicas and tournament-ready setups<br></li><li><strong>Precision Designer:</strong> Build your ideal crosshair from scratch with intuitive sliders for every parameter — lines, dot, outlines, color, opacity, and more<br></li><li><strong>Works in Every Game:</strong> Overlay your crosshair on any title — first-person shooters, third-person shooters, battle royales, and tactical shooters alike<br></li><li><strong>Game Bar Integration:</strong> The safest overlay method on PC — powered by Microsoft's trusted Game Bar platform for seamless exclusive fullscreen compatibility<br></li><li><strong>Multi-Monitor Support:</strong> Display your crosshair on any monitor and save custom positions for each game<br></li><li><strong>Share &amp; Export:</strong> Share your creations with friends or save them as .PNG/.SVG files<br></li><li><strong>Smart Toggle:</strong> Show or hide your crosshair with configurable mouse states and keyboard shortcuts<br></li><li><strong>Workshop Powered:</strong> Discover, share, and download crosshairs via Steam Workshop</li></ul><h2 class=\"bb_tag\" >Full Customization Control</h2><ul class=\"bb_ul\"><li><strong>Lines:</strong> Opacity, Length, Width, Offset, Color, Blur, Rotation<br></li><li><strong>Center Dot:</strong> Opacity, Size, Color, Blur<br></li><li><strong>Outlines:</strong> Opacity, Thickness, Color, Blur<br></li><li><strong>T-Shape:</strong> Remove the top arm — never, always, or only when firing<br></li><li><strong>Bloom:</strong> Dynamic crosshair spread during firing<br></li><li><strong>Position:</strong> Fine-tune X and Y coordinates for pixel-perfect placement</li></ul><h2 class=\"bb_tag\" >Your Aim, Your Rules</h2><p class=\"bb_paragraph\" >Stop settling for default crosshairs that disappear against bright backgrounds or blend into dark corners. Crosshair X puts you in complete control of your reticle — so you can focus on what matters: hitting your shots.</p>",
+      "about_the_game": "<h2 class=\"bb_tag\" >Dominate Every Match with the Perfect Crosshair</h2><br><p class=\"bb_paragraph\" >Crosshair X gives you a decisive competitive edge in every FPS, tactical shooter, and battle royale you play. Whether you're grinding ranked matches, clutching intense rounds, or pushing squads in open-world combat — your crosshair should never hold you back.</p><br><p class=\"bb_paragraph\" ><strong>Trusted by millions of players</strong> and rated Very Positive with over 40,000 reviews, Crosshair X is the most popular crosshair overlay on Steam.</p><h2 class=\"bb_tag\" >Why Competitive Players Choose Crosshair X</h2><ul class=\"bb_ul\"><li><strong>Thousands of Community Designs:</strong> Browse an ever-growing library of reticles shared by the Crosshair X community — including pro player replicas and tournament-ready setups<br></li><li><strong>Precision Designer:</strong> Build your ideal crosshair from scratch with intuitive sliders for every parameter — lines, dot, outlines, color, opacity, and more<br></li><li><strong>Works in Every Game:</strong> Overlay your crosshair on any title — first-person shooters, third-person shooters, battle royales, and tactical shooters alike<br></li><li><strong>Game Bar Integration:</strong> The safest overlay method on PC — powered by Microsoft's trusted Game Bar platform for seamless exclusive fullscreen compatibility<br></li><li><strong>Multi-Monitor Support:</strong> Display your crosshair on any monitor and save custom positions for each game<br></li><li><strong>Share &amp; Export:</strong> Share your creations with friends or save them as .PNG/.SVG files<br></li><li><strong>Smart Toggle:</strong> Show or hide your crosshair with configurable mouse states and keyboard shortcuts<br></li><li><strong>Workshop Powered:</strong> Discover, share, and download crosshairs via Steam Workshop</li></ul><h2 class=\"bb_tag\" >Full Customization Control</h2><ul class=\"bb_ul\"><li><strong>Lines:</strong> Opacity, Length, Width, Offset, Color, Blur, Rotation<br></li><li><strong>Center Dot:</strong> Opacity, Size, Color, Blur<br></li><li><strong>Outlines:</strong> Opacity, Thickness, Color, Blur<br></li><li><strong>T-Shape:</strong> Remove the top arm — never, always, or only when firing<br></li><li><strong>Bloom:</strong> Dynamic crosshair spread during firing<br></li><li><strong>Position:</strong> Fine-tune X and Y coordinates for pixel-perfect placement</li></ul><h2 class=\"bb_tag\" >Your Aim, Your Rules</h2><p class=\"bb_paragraph\" >Stop settling for default crosshairs that disappear against bright backgrounds or blend into dark corners. Crosshair X puts you in complete control of your reticle — so you can focus on what matters: hitting your shots.</p>",
+      "short_description": "The #1 crosshair overlay for competitive FPS players. Instantly upgrade your aim with a custom reticle — pick from thousands of pro &amp; community designs, or craft your own. Trusted by millions. Works in every game.",
+      "supported_languages": "English<strong>*</strong>, German<strong>*</strong>, Portuguese - Brazil<strong>*</strong>, Russian<strong>*</strong>, Simplified Chinese<strong>*</strong>, Spanish - Latin America<strong>*</strong>, French<strong>*</strong>, Italian<strong>*</strong>, Spanish - Spain<strong>*</strong>, Czech<strong>*</strong>, Polish<strong>*</strong>, Swedish<strong>*</strong>, Turkish<strong>*</strong>, Japanese<strong>*</strong>, Korean<strong>*</strong><br><strong>*</strong>languages with full audio support",
+      "header_image": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1366800/22e1a703a4d8f45c900741b53a4f933862798a10/header.jpg?t=1775517226",
+      "capsule_image": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1366800/a316b8a709e0ca866266b6152d016146ae3fdc47/capsule_231x87.jpg?t=1775517226",
+      "capsule_imagev5": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1366800/a316b8a709e0ca866266b6152d016146ae3fdc47/capsule_184x69.jpg?t=1775517226",
+      "website": "https://www.centerpointgaming.com",
+      "pc_requirements": {
+        "minimum": "<strong>Minimum:</strong><br><ul class=\"bb_ul\"><li><strong>OS:</strong> Windows 10</li></ul>",
+        "recommended": "<strong>Recommended:</strong><br><ul class=\"bb_ul\"><li><strong>OS:</strong> Windows 11</li></ul>"
+      },
+      "mac_requirements": [],
+      "linux_requirements": [],
+      "developers": [
+        "CenterPoint Gaming"
+      ],
+      "publishers": [
+        "CenterPoint Gaming"
+      ],
+      "price_overview": {
+        "currency": "USD",
+        "initial": 499,
+        "final": 499,
+        "discount_percent": 0,
+        "initial_formatted": "",
+        "final_formatted": "$4.99"
+      },
+      "packages": [
+        479357
+      ],
+      "package_groups": [
+        {
+          "name": "default",
+          "title": "Buy Crosshair X",
+          "description": "",
+          "selection_text": "Select a purchase option",
+          "save_text": "",
+          "display_type": 0,
+          "is_recurring_subscription": "false",
+          "subs": [
+            {
+              "packageid": 479357,
+              "percent_savings_text": " ",
+              "percent_savings": 0,
+              "option_text": "Crosshair X - $4.99",
+              "option_description": "",
+              "can_get_free_license": "0",
+              "is_free_license": false,
+              "price_in_cents_with_discount": 499
+            }
+          ]
+        }
+      ],
+      "platforms": {
+        "windows": true,
+        "mac": false,
+        "linux": false
+      },
+      "categories": [
+        {
+          "id": 13,
+          "description": "Captions available"
+        },
+        {
+          "id": 30,
+          "description": "Steam Workshop"
+        },
+        {
+          "id": 18,
+          "description": "Partial Controller Support"
+        },
+        {
+          "id": 23,
+          "description": "Steam Cloud"
+        }
+      ],
+      "genres": [
+        {
+          "id": "1",
+          "description": "Action"
+        },
+        {
+          "id": "25",
+          "description": "Adventure"
+        },
+        {
+          "id": "23",
+          "description": "Indie"
+        },
+        {
+          "id": "56",
+          "description": "Software Training"
+        },
+        {
+          "id": "57",
+          "description": "Utilities"
+        }
+      ],
+      "screenshots": [
+        {
+          "id": 0,
+          "path_thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1366800/ss_fe8eae5df49d634fe127452b45a9d2cbf0462f7a.600x338.jpg?t=1775517226",
+          "path_full": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1366800/ss_fe8eae5df49d634fe127452b45a9d2cbf0462f7a.1920x1080.jpg?t=1775517226"
+        },
+        {
+          "id": 1,
+          "path_thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1366800/ss_a473440212699e40ace46b56413c0ba523678dbd.600x338.jpg?t=1775517226",
+          "path_full": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1366800/ss_a473440212699e40ace46b56413c0ba523678dbd.1920x1080.jpg?t=1775517226"
+        },
+        {
+          "id": 2,
+          "path_thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1366800/ss_0acbc6bd39c50f9fb975a6c4572aa02ede7b4f28.600x338.jpg?t=1775517226",
+          "path_full": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1366800/ss_0acbc6bd39c50f9fb975a6c4572aa02ede7b4f28.1920x1080.jpg?t=1775517226"
+        },
+        {
+          "id": 3,
+          "path_thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1366800/ss_b3f3264c503acea190759c069250cb1573d0a66c.600x338.jpg?t=1775517226",
+          "path_full": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1366800/ss_b3f3264c503acea190759c069250cb1573d0a66c.1920x1080.jpg?t=1775517226"
+        },
+        {
+          "id": 4,
+          "path_thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1366800/ss_54088c758d9ee3586855d5c52ae3e41e726c954d.600x338.jpg?t=1775517226",
+          "path_full": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1366800/ss_54088c758d9ee3586855d5c52ae3e41e726c954d.1920x1080.jpg?t=1775517226"
+        },
+        {
+          "id": 5,
+          "path_thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1366800/ss_2d268d5b5f561a6a441b86766fc3e53f1099d7eb.600x338.jpg?t=1775517226",
+          "path_full": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1366800/ss_2d268d5b5f561a6a441b86766fc3e53f1099d7eb.1920x1080.jpg?t=1775517226"
+        },
+        {
+          "id": 6,
+          "path_thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1366800/ss_9455d4b8841f9086efe174ebaf90c05b4d3179cf.600x338.jpg?t=1775517226",
+          "path_full": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1366800/ss_9455d4b8841f9086efe174ebaf90c05b4d3179cf.1920x1080.jpg?t=1775517226"
+        },
+        {
+          "id": 7,
+          "path_thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1366800/ss_f9f810434cbd00ef2ec2e50335ed32a0940963b3.600x338.jpg?t=1775517226",
+          "path_full": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1366800/ss_f9f810434cbd00ef2ec2e50335ed32a0940963b3.1920x1080.jpg?t=1775517226"
+        }
+      ],
+      "movies": [
+        {
+          "id": 256818282,
+          "name": "Crosshair X",
+          "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/256818282/01f5c811edb1689a4bf5d076bce6a0539d80e867/movie_600x337.jpg?t=1750124158",
+          "dash_av1": "https://video.akamai.steamstatic.com/store_trailers/1366800/100071116/63859393ab6820aeae5538ef054ce02afdbf7efb/1750123110/dash_av1.mpd?t=1750124158",
+          "dash_h264": "https://video.akamai.steamstatic.com/store_trailers/1366800/100071116/63859393ab6820aeae5538ef054ce02afdbf7efb/1750123110/dash_h264.mpd?t=1750124158",
+          "hls_h264": "https://video.akamai.steamstatic.com/store_trailers/1366800/100071116/63859393ab6820aeae5538ef054ce02afdbf7efb/1750123110/hls_264_master.m3u8?t=1750124158",
+          "highlight": true
+        }
+      ],
+      "recommendations": {
+        "total": 38796
+      },
+      "release_date": {
+        "coming_soon": false,
+        "date": "Aug 17, 2020"
+      },
+      "support_info": {
+        "url": "https://www.centerpointgaming.com",
+        "email": "support@centerpointgaming.com"
+      },
+      "background": "https://store.akamai.steamstatic.com/images/storepagebackground/app/1366800?t=1775517226",
+      "background_raw": "https://store.akamai.steamstatic.com/images/storepagebackground/app/1366800?t=1775517226",
+      "content_descriptors": {
+        "ids": [],
+        "notes": null
+      },
+      "ratings": null
+    }
+  }
+}

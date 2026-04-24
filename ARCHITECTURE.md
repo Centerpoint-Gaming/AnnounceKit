@@ -40,39 +40,39 @@ Future mediums (web app, CLI, Electron, Discord bot, etc.) import the same core 
 
 ## Project Structure
 
+The shape below lists **directories** and **contract files** (the public surface of `packages/core`). Implementation files, UI components, and medium-internal modules are not enumerated — they churn. If you add a new *contract*, list it here. If you add a React component or a storage helper, don't.
+
 ```
 AnnounceKit/
-├── packages/
-│   └── core/
-│       └── src/
-│           ├── types.ts           # GameProfile, StoredAsset, SteamAppDetails
-│           ├── result.ts          # Result<T, E> discriminated union
-│           ├── steam-page.ts      # Parse #application_config data attributes
-│           ├── steam-api.ts       # Parse Steam Store API response
-│           ├── store-metadata.ts  # fetchStoreMetadata() contract
-│           ├── palette.ts         # k-means color extraction → Palette
-│           └── index.ts           # Public API exports
-├── extensions/
-│   └── chrome/
-│       ├── src/
-│       │   ├── popup/             # React UI
-│       │   │   ├── App.tsx        # Root — routes between states
-│       │   │   └── components/    # GameCard, AssetGallery, DebugView
-│       │   ├── content/
-│       │   │   └── scraper.ts     # detectPageContext() + message handler
-│       │   ├── background/
-│       │   │   ├── service-worker.ts  # Proxies API calls, delegates to core
-│       │   │   └── palette.ts     # OffscreenCanvas wrapper for palette extraction
-│       │   └── storage/
-│       │       └── gameProfiles.ts    # CRUD for GameProfile
-│       ├── public/
-│       │   └── manifest.json
-│       ├── vite.config.ts             # Popup build (ES module)
-│       ├── vite.content.config.ts     # Content script build (IIFE)
-│       ├── vite.sw.config.ts          # Service worker build (IIFE)
-│       └── popup.html
-└── package.json                   # Workspace root
+├── packages/core/                 # Platform-agnostic. No browser APIs.
+│   ├── src/
+│   │   ├── result.ts              # Contract 0: Result<T, E>, ok(), err()
+│   │   ├── types.ts               # Shared data models (GameProfile, StoreAssets, ...)
+│   │   ├── steam-page.ts          # Contract 1: detectPageContext + helpers
+│   │   ├── steam-api.ts           #             parseSteamAppDetails (supporting parser)
+│   │   ├── store-metadata.ts      # Contract 2: fetchStoreMetadata
+│   │   ├── palette.ts             # Contract 3: extractPaletteFromImageData
+│   │   ├── cache.ts               # Contract 4: ContextCache interface + MemoryCache
+│   │   └── index.ts               # Public API — add exports here when a new contract lands
+│   └── tests/                     # Vitest, committed Steam fixtures
+├── extensions/chrome/             # Medium #1
+│   ├── src/
+│   │   ├── popup/                 # React UI (components churn — not listed)
+│   │   ├── content/               # Content script: page scraping
+│   │   ├── background/            # Service worker + OffscreenCanvas wrapper
+│   │   └── storage/               # chrome.storage.local adapters (implements ContextCache)
+│   ├── tests/e2e/                 # Playwright
+│   ├── public/manifest.json
+│   └── vite.{config,content.config,sw.config}.ts   # Three builds: popup ESM, content IIFE, sw IIFE
+├── scripts/refresh-fixtures.ts
+├── playwright.config.ts
+├── docs/decisions/                # ADRs (created when the first decision lands)
+├── ARCHITECTURE.md
+├── CLAUDE.md
+└── README.md
 ```
+
+**The rule of thumb:** a new file requires a doc edit only if it's a new contract in `packages/core/src/` or a new top-level directory. Everything else is discoverable by reading the tree.
 
 ## Contracts
 
@@ -110,6 +110,22 @@ Core contract that extracts a structured color palette from image pixel data usi
 **Output:** `Result<Palette, PaletteError>`
 
 **Palette structure:** `primary`, `secondary`, `accent` (highest saturation), `neutral` (best text contrast), `full` (all 8 clusters), plus `vibrancy` and `luminance` classifications.
+
+### 4. ContextCache
+
+Platform-agnostic cache interface that makes context capture fast on subsequent opens. The interface lives in core; each medium implements it against its own storage (Chrome uses `chrome.storage.local`; future mediums use `localStorage`, SQLite, etc.). An in-memory `MemoryCache` implementation ships with core as a fallback for environments without persistent storage.
+
+**Interface:** `get`, `set`, `invalidate`, `invalidatePattern` (prefix match), `size`, `prune` — all `Promise`-returning.
+**Entry shape:** `CacheEntry<T>` wraps `data` with `schemaVersion`, `cachedAt`, `expiresAt` (nullable for no-expiry), and a `source` string for debugging.
+**Keys:** built via `cacheKeys.*` constructors (`store:<appId>`, `palette:<appId>`, `profile:<appId>`, etc.) — never raw strings.
+
+**Invariants:**
+- Schema version mismatch → cache miss (never return stale-format data)
+- Storage errors never reach the UI — degrade to cache miss
+- Last-writer-wins on concurrent writes to the same key
+- Reads <50ms, writes <100ms on typical hardware
+
+**Bump protocol:** when `CacheEntry` shape changes, increment `CACHE_SCHEMA_VERSION` in `cache.ts`. Existing entries become cache misses and are re-fetched on demand.
 
 ## Build System
 

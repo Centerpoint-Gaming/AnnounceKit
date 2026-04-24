@@ -16,7 +16,7 @@
  *   return different data or are invisible in certain regions; the US default
  *   provides the broadest coverage.
  *
- * Performance budget: <2s typical, 5s hard timeout.
+ * Performance budget: <2s typical, 5s default timeout (caller-overridable).
  * Side effects: Network reads only, no storage writes.
  */
 
@@ -57,8 +57,7 @@ export type StoreFetchErrorReason =
   | 'network-error'
   | 'timeout'
   | 'aborted'
-  | 'parse-error'
-  | 'unknown';
+  | 'parse-error';
 
 export interface StoreFetchError {
   reason: StoreFetchErrorReason;
@@ -68,6 +67,9 @@ export interface StoreFetchError {
 }
 
 export interface FetchStoreMetadataOptions {
+  /** Injected fetch implementation. Defaults to globalThis.fetch. */
+  fetch?: typeof globalThis.fetch;
+  /** Request timeout in milliseconds. Defaults to 5000; caller value is honored as-is. */
   timeout?: number;
   signal?: AbortSignal;
 }
@@ -81,10 +83,6 @@ const MAX_SCREENSHOTS = 8;
 
 // ─── Internal helpers ────────────────────────────────────────────────────────
 
-/**
- * Create an AbortSignal that fires on timeout OR when the caller's signal fires,
- * whichever comes first.
- */
 function createCombinedSignal(
   timeoutMs: number,
   callerSignal?: AbortSignal
@@ -104,9 +102,6 @@ function createCombinedSignal(
   };
 }
 
-/**
- * Classify a fetch failure into a StoreFetchError.
- */
 function classifyFetchError(error: unknown, context: string): StoreFetchError {
   if (error instanceof Error) {
     if (error.message === 'timeout') {
@@ -117,12 +112,11 @@ function classifyFetchError(error: unknown, context: string): StoreFetchError {
     }
     return { reason: 'network-error', message: `${context}: ${error.message}` };
   }
-  return { reason: 'unknown', message: `${context}: unknown error` };
+  return { reason: 'network-error', message: `${context}: unknown error` };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function deriveReleaseStatus(data: any): ReleaseStatus {
-  // Check genres for "Early Access"
   const genres: { description: string }[] = data.genres ?? [];
   if (genres.some((g) => g.description === 'Early Access')) {
     return 'early-access';
@@ -154,7 +148,7 @@ function parseApiResponse(appId: string, data: any): StoreMetadata | null {
     appId,
     name: d.name ?? '',
     shortDescription: d.short_description ?? '',
-    tags: [], // API does not expose user tags — filled by scrape fallback
+    tags: [],
     genres,
     categories,
     releaseDate: d.release_date?.date ?? null,
@@ -173,15 +167,8 @@ function parseApiResponse(appId: string, data: any): StoreMetadata | null {
   };
 }
 
-/**
- * Extract user tags from the Steam store page HTML.
- *
- * Steam embeds tag data in a script block as InitAppTagModal with a JSON array
- * of { tagid, name, count } objects. We parse that rather than querying the DOM.
- */
 function parseTagsFromStorePage(html: string): string[] {
   try {
-    // Pattern: InitAppTagModal( appid, [ {tagid:..., name:"...", ...}, ... ] )
     const match = html.match(/InitAppTagModal\(\s*\d+\s*,\s*(\[[\s\S]*?\])\s*,/);
     if (match) {
       const tagsJson = JSON.parse(match[1]);
@@ -191,7 +178,6 @@ function parseTagsFromStorePage(html: string): string[] {
         .filter((n: string) => n);
     }
 
-    // Fallback: look for data-tagid elements in the tag cloud
     const tagPattern = /<a[^>]*class="app_tag"[^>]*>([\s\S]*?)<\/a>/g;
     const tags: string[] = [];
     let tagMatch;
@@ -213,32 +199,28 @@ export async function fetchStoreMetadata(
   appId: string,
   options?: FetchStoreMetadataOptions
 ): Promise<Result<StoreMetadata, StoreFetchError>> {
-  // Validate input
   if (!appId || !/^\d+$/.test(appId)) {
     return err({ reason: 'not-found', message: `Invalid app ID: "${appId}"` });
   }
 
-  // Check if already aborted
   if (options?.signal?.aborted) {
     return err({ reason: 'aborted', message: 'Request was aborted before it started' });
   }
 
-  const timeoutMs = Math.min(options?.timeout ?? DEFAULT_TIMEOUT, DEFAULT_TIMEOUT);
+  const fetchImpl = options?.fetch ?? globalThis.fetch;
+  const timeoutMs = options?.timeout ?? DEFAULT_TIMEOUT;
   const { signal, cleanup } = createCombinedSignal(timeoutMs, options?.signal);
 
   try {
-    // ── Step 1: Fetch from Steam appdetails API (primary source) ────────
-
     const apiUrl = `${STEAM_API_BASE}/api/appdetails?appids=${appId}&cc=us&l=english`;
     let apiResponse: Response;
 
     try {
-      apiResponse = await fetch(apiUrl, { signal });
+      apiResponse = await fetchImpl(apiUrl, { signal });
     } catch (fetchErr) {
       return err(classifyFetchError(fetchErr, 'Steam API'));
     }
 
-    // Handle HTTP-level errors
     if (apiResponse.status === 429) {
       const retryAfter = Number(apiResponse.headers.get('retry-after')) || undefined;
       return err({
@@ -273,16 +255,13 @@ export async function fetchStoreMetadata(
       });
     }
 
-    // Bail early if aborted during API parsing
     if (signal.aborted) {
       return err({ reason: 'aborted', message: 'Request aborted after API fetch' });
     }
 
-    // ── Step 2: Scrape store page for user tags (API doesn't expose them) ─
-
     try {
       const storeUrl = `${STEAM_API_BASE}/app/${appId}?cc=us&l=english`;
-      const pageResponse = await fetch(storeUrl, { signal });
+      const pageResponse = await fetchImpl(storeUrl, { signal });
 
       if (pageResponse.ok) {
         const html = await pageResponse.text();
@@ -293,7 +272,6 @@ export async function fetchStoreMetadata(
           metadata.source = 'mixed';
         }
       }
-      // Non-ok store page response is non-fatal — we just won't have tags
     } catch {
       // Tag scrape failure is non-fatal — we still have API data
     }

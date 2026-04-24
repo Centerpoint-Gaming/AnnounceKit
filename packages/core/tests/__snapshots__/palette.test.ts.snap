@@ -1,0 +1,25 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`extractPaletteFromImageData > snapshots the palette (catches unintended algorithm drift) 1`] = `
+{
+  "data": {
+    "accent": "#6fd9e0",
+    "full": [
+      "#2d3f76",
+      "#151a2d",
+      "#5a7d99",
+      "#e3ecee",
+      "#c0abb1",
+      "#6fd9e0",
+      "#b85d4a",
+      "#71bf4a",
+    ],
+    "luminance": "mid",
+    "neutral": "#e3ecee",
+    "primary": "#2d3f76",
+    "secondary": "#151a2d",
+    "vibrancy": "balanced",
+  },
+  "ok": true,
+}
+`;
