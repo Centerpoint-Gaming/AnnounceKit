@@ -20,8 +20,8 @@
  * Side effects: Network reads only, no storage writes.
  */
 
-import type { Result } from './result.js';
-import { ok, err } from './result.js';
+import type { Result } from '../result.js';
+import { ok, err } from '../result.js';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 

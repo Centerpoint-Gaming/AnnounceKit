@@ -24,10 +24,11 @@
 export const CACHE_SCHEMA_VERSIONS = {
   storeMetadata: 1,
   palette: 1,
-  gameProfile: 1,
+  gameProfile: 4,
   signature: 1,
   userPreferences: 1,
   selectionHistory: 1,
+  appEvents: 1,
 } as const;
 
 export type CacheEntryType = keyof typeof CACHE_SCHEMA_VERSIONS;
@@ -114,6 +115,10 @@ export const cacheKeys = {
   gameProfile: (appId: string): CacheKey => ({
     key: `profile:${appId}`,
     type: 'gameProfile',
+  }),
+  appEvents: (appId: string): CacheKey => ({
+    key: `events:${appId}`,
+    type: 'appEvents',
   }),
 } as const;
 

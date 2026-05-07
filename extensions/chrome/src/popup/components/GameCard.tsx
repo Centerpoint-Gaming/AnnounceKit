@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { GameProfile } from '@announcekit/core';
 import { AssetGallery } from './AssetGallery';
 
@@ -5,7 +6,16 @@ interface GameCardProps {
   profile: GameProfile;
 }
 
+const COLLAPSED_TAGS = 3;
+
 export function GameCard({ profile }: GameCardProps) {
+  const [tagsExpanded, setTagsExpanded] = useState(false);
+
+  const totalTags = profile.tags.length;
+  const visibleTags = tagsExpanded ? profile.tags : profile.tags.slice(0, COLLAPSED_TAGS);
+  const hiddenCount = totalTags - visibleTags.length;
+  const hasOverflow = totalTags > COLLAPSED_TAGS;
+
   return (
     <div className="space-y-4">
       {/* Header with capsule image */}
@@ -24,13 +34,39 @@ export function GameCard({ profile }: GameCardProps) {
       </div>
 
       {/* Tags */}
-      {profile.tags.length > 0 && (
+      {totalTags > 0 && (
         <div>
-          <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-2">
-            Tags
-          </h3>
+          <button
+            type="button"
+            onClick={() => hasOverflow && setTagsExpanded((v) => !v)}
+            disabled={!hasOverflow}
+            className={`w-full flex items-center justify-between mb-2 ${
+              hasOverflow ? 'cursor-pointer' : 'cursor-default'
+            }`}
+            aria-expanded={tagsExpanded}
+          >
+            <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">
+              Tags <span className="text-gray-600 normal-case">({totalTags})</span>
+            </h3>
+            {hasOverflow && (
+              <span className="text-xs text-gray-500 hover:text-gray-300 transition-colors">
+                {tagsExpanded ? 'Collapse' : 'Expand'}
+                <svg
+                  className={`inline-block w-3 h-3 ml-1 transition-transform ${
+                    tagsExpanded ? 'rotate-180' : ''
+                  }`}
+                  viewBox="0 0 12 12"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                >
+                  <path d="M3 5l3 3 3-3" />
+                </svg>
+              </span>
+            )}
+          </button>
           <div className="flex flex-wrap gap-1.5">
-            {profile.tags.map((tag) => (
+            {visibleTags.map((tag) => (
               <span
                 key={tag}
                 className="text-xs px-2 py-1 bg-gray-800 rounded-full text-gray-300"
@@ -38,6 +74,16 @@ export function GameCard({ profile }: GameCardProps) {
                 {tag}
               </span>
             ))}
+            {!tagsExpanded && hiddenCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setTagsExpanded(true)}
+                className="text-xs px-2 py-1 bg-gray-800 hover:bg-gray-700 rounded-full text-gray-400 hover:text-white transition-colors"
+                title={`Show ${hiddenCount} more tag${hiddenCount === 1 ? '' : 's'}`}
+              >
+                +{hiddenCount}
+              </button>
+            )}
           </div>
         </div>
       )}

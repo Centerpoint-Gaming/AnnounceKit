@@ -6,8 +6,8 @@
  * wrapper (fetch + OffscreenCanvas + downsample) lives in the chrome medium.
  */
 
-import type { Result } from './result.js';
-import { ok, err } from './result.js';
+import type { Result } from '../result.js';
+import { ok, err } from '../result.js';
 
 export type PaletteErrorReason =
   | 'fetch-failed'

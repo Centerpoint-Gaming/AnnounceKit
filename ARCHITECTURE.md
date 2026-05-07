@@ -1,6 +1,6 @@
 # AnnounceKit Architecture
 
-A tool for generating announcement thumbnails and banners, starting with Steam. The architecture separates **core logic** from **mediums** so the rendering engine and data models can be reused across different interfaces.
+A tool for generating announcement thumbnails and banners, starting with Steam. The architecture separates **core logic** from **mediums** so the rendering engine, prompt system, and data models can be reused across different interfaces.
 
 ## Core vs Medium
 
@@ -8,25 +8,27 @@ A tool for generating announcement thumbnails and banners, starting with Steam. 
 ┌─────────────────────────────────────────┐
 │              packages/core              │
 │  Platform-agnostic logic & types        │
-│  - Steam page context parsing           │
-│  - Store metadata fetching (Result<T>)  │
+│  - Steam page parsing & store metadata  │
 │  - Palette extraction (k-means)         │
-│  - Renderer (future)                    │
-│  - Templates (future)                   │
+│  - Profile assembly (pure merge)        │
+│  - Prompt section pipeline              │
+│  - Thumbnail generation transport       │
+│  - BinaryStore + brand-assets contracts │
 │  No browser-extension dependencies      │
 └──────────────────┬──────────────────────┘
                    │ imports
 ┌──────────────────▼──────────────────────┐
 │     extensions/chrome (medium #1)       │
 │  Chrome-specific wiring                 │
-│  - Content script (scrape App ID)       │
-│  - Service worker (proxy API calls)     │
+│  - Content script (page scrape)         │
+│  - Service worker (network + canvas)    │
 │  - Popup UI (React + Tailwind)          │
-│  - Storage (chrome.storage.local)       │
+│  - Storage adapters (chrome.storage,    │
+│    IndexedDB binary store)              │
 └─────────────────────────────────────────┘
 ```
 
-Future mediums (web app, CLI, Electron, Discord bot, etc.) import the same core — only the UI shell and storage layer change.
+**Architectural rule.** Core is push-fed, never pull-fed. The medium gathers (fetches, scrapes, hashes, caches) and hands ready-shaped core types to core functions. Core never reaches for `fetch`, `chrome.*`, `OffscreenCanvas`, or any storage backend.
 
 ## Stack
 
@@ -36,7 +38,7 @@ Future mediums (web app, CLI, Electron, Discord bot, etc.) import the same core 
 | Core package     | TypeScript (DOM lib for fetch/AbortSignal) |
 | Chrome extension | Manifest V3, React, Vite, Tailwind CSS |
 | Build            | Vite (3-stage: popup, content IIFE, service worker IIFE) |
-| Testing          | Vitest                            |
+| Testing          | Vitest (unit) + Playwright (e2e) |
 
 ## Project Structure
 
@@ -44,146 +46,163 @@ The shape below lists **directories** and **contract files** (the public surface
 
 ```
 AnnounceKit/
-├── packages/core/                 # Platform-agnostic. No browser APIs.
+├── packages/core/                      # Platform-agnostic. No browser APIs.
 │   ├── src/
-│   │   ├── result.ts              # Contract 0: Result<T, E>, ok(), err()
-│   │   ├── types.ts               # Shared data models (GameProfile, StoreAssets, ...)
-│   │   ├── steam-page.ts          # Contract 1: detectPageContext + helpers
-│   │   ├── steam-api.ts           #             parseSteamAppDetails (supporting parser)
-│   │   ├── store-metadata.ts      # Contract 2: fetchStoreMetadata
-│   │   ├── palette.ts             # Contract 3: extractPaletteFromImageData
-│   │   ├── cache.ts               # Contract 4: ContextCache interface + MemoryCache
-│   │   └── index.ts               # Public API — add exports here when a new contract lands
-│   └── tests/                     # Vitest, committed Steam fixtures
-├── extensions/chrome/             # Medium #1
+│   │   ├── index.ts                    # Public API barrel — re-exports each domain
+│   │   ├── result.ts                   # Contract: Result<T, E>, ok(), err()
+│   │   ├── cache/                      # ContextCache + StorageAdapter + cacheKeys
+│   │   ├── steam/                      # page.ts, store-metadata.ts (parsers + fetchStoreMetadata)
+│   │   ├── palette/                    # extractPaletteFromImageData
+│   │   ├── profile/                    # types.ts (GameProfile, GameBrand, StoredAsset) + assemble.ts
+│   │   ├── prompt/                     # PromptContext + section pipeline
+│   │   │   ├── context.ts              # PromptContext type
+│   │   │   ├── build.ts                # buildPromptFromContext + ordered SECTIONS
+│   │   │   └── sections/               # one file per contributor
+│   │   ├── thumbnail/                  # generate.ts (Gemini transport)
+│   │   ├── binary-store/               # BinaryStore interface (medium implements it)
+│   │   └── brand-assets/               # validation + hashing + immutable bucket helpers
+│   └── tests/                          # Vitest, mirrors src/ layout, committed Steam fixtures
+├── extensions/chrome/                  # Medium #1
 │   ├── src/
-│   │   ├── popup/                 # React UI (components churn — not listed)
-│   │   ├── content/               # Content script: page scraping
-│   │   ├── background/            # Service worker + OffscreenCanvas wrapper
-│   │   └── storage/               # chrome.storage.local adapters (implements ContextCache)
-│   ├── tests/e2e/                 # Playwright
+│   │   ├── popup/                      # React UI (components churn — not listed)
+│   │   ├── content/                    # Content script: page scraping
+│   │   ├── background/                 # Service worker + OffscreenCanvas wrapper
+│   │   ├── adapters/                   # chrome.storage StorageAdapter
+│   │   └── storage/                    # ContextCache + IndexedDB BinaryStore wiring
+│   ├── tests/e2e/                      # Playwright
 │   ├── public/manifest.json
-│   └── vite.{config,content.config,sw.config}.ts   # Three builds: popup ESM, content IIFE, sw IIFE
+│   └── vite.{config,content.config,sw.config}.ts
 ├── scripts/refresh-fixtures.ts
 ├── playwright.config.ts
-├── docs/decisions/                # ADRs (created when the first decision lands)
+├── docs/roadmap.md                     # V1.5 punch list (image-gen data gaps)
 ├── ARCHITECTURE.md
 ├── CLAUDE.md
 └── README.md
 ```
 
-**The rule of thumb:** a new file requires a doc edit only if it's a new contract in `packages/core/src/` or a new top-level directory. Everything else is discoverable by reading the tree.
+**The rule of thumb:** a new file requires a doc edit only if it's a new contract in `packages/core/src/` or a new top-level directory.
 
 ## Contracts
 
-### 1. detectPageContext
+### detectPageContext (steam/page.ts)
 
-Runs in the content script on Steam pages. Extracts structured context from the page DOM and `#application_config` data attributes.
+Pure parsers for Steam's `#application_config` payload. Runs in the content script; the script handles DOM access and passes raw JSON strings into core. Editor fields are matched by placeholder text (Steam obfuscates class names) — English-only, falls back to structured `data-partnereventstore`.
 
-**Input:** Current page DOM (reads only, no side effects)
-**Output:** `PageContext` with App ID, editor field references, event data, page variant
+### fetchStoreMetadata (steam/store-metadata.ts)
 
-**Key design decisions:**
-- Editor fields are matched by **placeholder text** (e.g. `input[placeholder="Enter Event Name here"]`) because Steam sanitizes/obfuscates CSS class names
-- This will break with localization — English-only placeholders. Falls back to structured data from `data-partnereventstore`
-- Re-detects fresh on every popup request to avoid stale cache from SPA hydration race conditions
+**Input:** App ID + optional `{ fetch, timeout, signal }`
+**Output:** `Result<StoreMetadata, StoreFetchError>`
+**Errors:** `not-found | rate-limited | network-error | timeout | aborted | parse-error`
 
-### 2. fetchStoreMetadata
+Primary: Steam `appdetails` API. Fallback: store-page HTML scrape for user tags. Library hero URL constructed from CDN pattern.
 
-Core contract that fetches game metadata from Steam's public API.
+### extractPaletteFromImageData (palette/index.ts)
 
-**Input:** App ID string, optional timeout/AbortSignal
-**Output:** `Result<StoreMetadata, StoreFetchError>` — never throws
-
-**Data sources:**
-- Primary: Steam `appdetails` API (`?cc=us&l=english` for region consistency)
-- Fallback: Store page HTML scrape for user tags (API doesn't expose them)
-- Constructed: Library hero URL from CDN pattern
-
-**Error handling:** Typed `StoreFetchError` with reasons: `not-found`, `rate-limited`, `network-error`, `timeout`, `aborted`, `parse-error`
-
-### 3. Palette Extraction
-
-Core contract that extracts a structured color palette from image pixel data using deterministic k-means++ clustering (k=8).
-
-**Input:** RGBA pixel data (`Uint8ClampedArray`)
+**Input:** RGBA `Uint8ClampedArray` (medium decodes the image first)
 **Output:** `Result<Palette, PaletteError>`
 
-**Palette structure:** `primary`, `secondary`, `accent` (highest saturation), `neutral` (best text contrast), `full` (all 8 clusters), plus `vibrancy` and `luminance` classifications.
+Deterministic k-means++ (k=8). Returns primary/secondary/accent/neutral hex codes, full 8-cluster array, plus `vibrancy` and `luminance` classifications.
 
-### 4. ContextCache
+### ContextCache (cache/index.ts)
 
-Platform-agnostic cache interface that makes context capture fast on subsequent opens. The interface lives in core; each medium implements it against its own storage (Chrome uses `chrome.storage.local`; future mediums use `localStorage`, SQLite, etc.). An in-memory `MemoryCache` implementation ships with core as a fallback for environments without persistent storage.
+Platform-agnostic cache. Each medium provides a `StorageAdapter` (Chrome uses `chrome.storage.local`; in-memory adapter ships for tests). Per-entry-type schema versions in `CACHE_SCHEMA_VERSIONS` — bumping one type invalidates only that type. Storage errors degrade to cache miss; never surface to UI.
 
-**Interface:** `get`, `set`, `invalidate`, `invalidatePattern` (prefix match), `size`, `prune` — all `Promise`-returning.
-**Entry shape:** `CacheEntry<T>` wraps `data` with `schemaVersion`, `cachedAt`, `expiresAt` (nullable for no-expiry), and a `source` string for debugging.
-**Keys:** built via `cacheKeys.*` constructors (`store:<appId>`, `palette:<appId>`, `profile:<appId>`, etc.) — never raw strings.
+### assembleGameProfile (profile/assemble.ts)
 
-**Invariants:**
-- Schema version mismatch → cache miss (never return stale-format data)
-- Storage errors never reach the UI — degrade to cache miss
-- Last-writer-wins on concurrent writes to the same key
-- Reads <50ms, writes <100ms on typical hardware
+Pure merge of core types into a `GameProfile`. The medium fetches and hands core-typed inputs.
 
-**Bump protocol:** when `CacheEntry` shape changes, increment `CACHE_SCHEMA_VERSION` in `cache.ts`. Existing entries become cache misses and are re-fetched on demand.
+```ts
+assembleGameProfile({
+  appId: string,
+  metadata: StoreMetadata,   // from fetchStoreMetadata
+  palette: Palette,          // from extractPaletteFromImageData
+  brand?: GameBrand,         // existing bucket to preserve, defaults to empty
+  now?: number,              // override Date.now() for tests
+}): GameProfile
+```
 
-## Build System
+### PromptContext + buildPromptFromContext (prompt/)
 
-Chrome extension content scripts and service workers **cannot use ES module imports**. They must be self-contained scripts.
+A typed bag of inputs the prompt builder reads:
 
-We solve this with three separate Vite builds:
+```ts
+interface PromptContext {
+  game?: { name, shortDescription?, detailedDescription?, tags?, requiredAge? };
+  announcement?: { title?, subtitle? };
+  palette?: Palette;
+  references?: { hero?, logo?, screenshots?, pastEventThumbnails? };
+  derived?: { vlmCaptions?, moodTags?, blendedPalette? };
+  target?: { aspectRatio?, surface? };
+}
+```
 
-| Target         | Config                    | Format | Code splitting |
-|----------------|---------------------------|--------|----------------|
-| Popup          | `vite.config.ts`          | ESM    | Yes (via popup.html) |
-| Content script | `vite.content.config.ts`  | IIFE   | No — all deps inlined |
-| Service worker | `vite.sw.config.ts`       | IIFE   | No — all deps inlined |
+Every field optional. Sections that need a missing field skip themselves. The medium populates whatever it has; core synthesizes.
 
-Build command: `npm run build` (runs all three sequentially, popup first with `emptyOutDir: true`, then content and SW with `emptyOutDir: false`).
+`buildPromptFromContext(ctx)` runs an ordered list of `PromptSection`s and joins their fragments. Reference selection is medium policy — core formats text from `ctx`, the medium chooses which `references` to send to `generateThumbnail`.
+
+### generateThumbnail (thumbnail/generate.ts)
+
+**Input:** `{ apiKey, prompt: string, references?: ThumbnailReference[], model?, signal?, fetchImpl? }`
+**Output:** `Result<GeneratedThumbnail, ThumbnailGenError>`
+**Errors:** `missing-api-key | missing-prompt | network | api-error | no-image-returned | invalid-response`
+
+Pure transport — does not build prompts, does not select references. The medium builds the prompt via `buildPromptFromContext`, resolves any `StoredAsset.binaryRef` to bytes via its `BinaryStore`, packages them as `ThumbnailReference[]`, and calls this function.
+
+### editThumbnail (thumbnail/edit.ts)
+
+**Input:** `{ apiKey, instruction: string, priorImage: ThumbnailReference, references?: EditReference[], model?, signal?, fetchImpl? }`
+**Output:** `Result<EditedThumbnail, ThumbnailEditError>`
+**Errors:** `missing-api-key | missing-instruction | missing-prior-image | network | api-error | no-image-returned | invalid-response`
+
+Iterative refinement on a previously generated thumbnail. The contract wraps a free-form natural-language `instruction` with a preservation guard + the shared `NO_TEXT_RULE`, places the prior image as inline part 1 (the canvas), and appends each `EditReference` after it.
+
+`EditReference` carries a `role` (`pose | item | character | environment | style | other`) so the prompt addresses each attachment by 1-based index with a role-specific clause — e.g. attachment 2 (pose reference): "match the pose, body language, and gesture; do NOT copy art style or background." Without role attribution the model averages all attachments together.
+
+Statelessness is intentional. Compounding chains (chat-style edit history) are the medium's job: feed the latest output back as `priorImage` next round.
+
+### BinaryStore (binary-store/index.ts)
+
+Content-addressed byte storage. Pure interface; the medium implements it (Chrome uses IndexedDB). Bytes keyed by SHA-256 hex digest — same content → same key, so `put()` is idempotent.
+
+### brand-assets helpers (brand-assets/index.ts)
+
+Pure helpers for the unified `GameProfile.brand.brandAssets` bucket: SHA-256 hashing, MIME validation, dedup-aware add/remove/rename. The bucket holds both user uploads and Steam-derived assets the user promoted into the brand collection — both shapes share `StoredAsset`.
 
 ## Data Flow
 
-1. **User navigates** to a Steam page (store, partner, or community)
-2. **Content script** runs `detectPageContext()` — extracts App ID from URL and `#application_config`, finds editor fields by placeholder text
-3. **Service worker** receives `PAGE_CONTEXT_READY` and sets badge ("Edit" on editor pages, "OK" on game pages)
-4. **Popup** opens, sends `GET_PAGE_CONTEXT` — content script runs a **fresh detection** (avoids stale cache from SPA hydration)
-5. **Popup** checks `chrome.storage.local` for a saved GameProfile
-   - If found → display immediately
-   - If not → request game details from service worker
-6. **Service worker** calls core's `fetchStoreMetadata()` (API + tag scrape) and extracts palette via `OffscreenCanvas` + core's `extractPaletteFromImageData()`
-7. **Popup** assembles a `GameProfile`, saves to storage, and displays it
+1. **User navigates** to a Steam page. Content script runs `detectPageContext()` (parses `#application_config`).
+2. **Service worker** receives `PAGE_CONTEXT_READY`, sets the badge.
+3. **Popup** opens, requests fresh page context, then checks the cache for a saved `GameProfile`.
+4. **Cache hit** → display immediately.
+5. **Cache miss** — popup orchestrates:
+   - Sends `FETCH_GAME_DETAILS` → service worker calls `fetchStoreMetadata` → returns `StoreMetadata`
+   - Sends `EXTRACT_PALETTE` → service worker fetches the image, decodes via `OffscreenCanvas`, calls `extractPaletteFromImageData` → returns `Palette`
+   - Calls `assembleGameProfile({ appId, metadata, palette })` to merge into a `GameProfile`
+   - Persists via `saveGameProfile`
+6. **User clicks Generate** — popup sends `GENERATE_THUMBNAIL` with the profile + announcement title.
+7. **Service worker** builds a `PromptContext` from the profile + title, runs `buildPromptFromContext`, then calls `generateThumbnail({ apiKey, prompt, references })`.
 
-## Data Model
+## Adding a Prompt Section
 
-```typescript
-interface GameProfile {
-  appId: string;
-  name: string;
-  shortDescription: string;
-  tags: string[];
-  storeAssets: {
-    headerCapsule: string;
-    heroImage: string | null;
-    screenshots: string[];
-    logo: string | null;
-  };
-  palette: Palette;    // primary/secondary/accent/neutral + full[8] + vibrancy + luminance
-  brand: {             // user-configured (future)
-    logos: StoredAsset[];
-    colors: string[];
-    exampleThumbnails: StoredAsset[];
-  };
-  createdAt: number;
-  lastUsedAt: number;
-}
-```
+Sections are independently testable contributors to the prompt. To add one:
+
+1. Create `packages/core/src/prompt/sections/<id>.ts` exporting a `PromptSection`. Read whatever fields you need from `ctx` and return either a string fragment or `null` (skip when inputs are missing).
+2. Append the section to the `SECTIONS` array in `packages/core/src/prompt/build.ts` at the position where it reads naturally (subject first sets the frame; style-constraints last locks the format).
+3. If your section reads new context fields, add them to `PromptContext` in `prompt/context.ts`. Existing sections ignore unknown fields — adding a field is non-breaking.
+4. Write per-section unit tests in `tests/prompt/sections.test.ts` covering both the present-input and missing-input cases.
+5. Update `tests/prompt/build-prompt.test.ts` snapshots if the new section changes the assembled prompt for the canonical fixture.
+
+There is no plugin/registration system — core owns the canonical `SECTIONS` array. Mediums pass data, not behavior. Different mediums that genuinely need different phrasing should drive that via `ctx.target` rather than custom sections.
 
 ## Adding a New Medium
 
 To add a new way to interact with AnnounceKit (e.g., a web app):
 
-1. Create a new directory (e.g., `apps/web/`)
-2. Import types and functions from `@announcekit/core`
-3. Implement your own storage layer (localStorage, database, etc.)
-4. Implement your own UI
-5. The core logic — API fetching, palette extraction, and (future) rendering — is shared
+1. Create a new directory (e.g., `apps/web/`).
+2. Import types and functions from `@announcekit/core`.
+3. Implement a `StorageAdapter` for your persistence backend; pass it to `createContextCache`.
+4. Implement a `BinaryStore` if you need brand-asset uploads.
+5. Wire your I/O (Steam fetch, palette extraction, Gemini call) — call core's pure functions to do the work.
+6. Build your UI.
+
+The shared surface — Steam parsing, store fetching, palette extraction, profile assembly, prompt building, thumbnail transport, brand-asset helpers — is medium-agnostic.

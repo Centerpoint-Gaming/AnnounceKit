@@ -20,6 +20,8 @@ const coreAlias = {
 export default defineConfig({
   plugins: [react()],
   base: './',
+  // Load .env from the repo root so secrets live in one place.
+  envDir: resolve(__dirname, '../..'),
   build: {
     outDir: 'dist',
     emptyOutDir: true,

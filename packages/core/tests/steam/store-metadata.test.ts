@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { fetchStoreMetadata } from '../src/store-metadata.js';
+import { fetchStoreMetadata } from '../../src/steam/store-metadata.js';
 
-const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), 'fixtures');
+const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), '..', 'fixtures');
 
 async function loadTextFixture(rel: string): Promise<string> {
   return readFile(join(FIXTURES, rel), 'utf8');

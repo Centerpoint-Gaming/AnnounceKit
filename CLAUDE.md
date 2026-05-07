@@ -4,9 +4,9 @@ This file is the rules of engagement for any AI agent working in this repo. It's
 
 ## Current focus
 
-**Milestone V1.5 — close the image-gen data gaps.** V1 captures enough to display a game profile; it does not yet capture enough to drive a modern image generator (Flux, Ideogram, Nano Banana, Imagen, etc.) to on-brand results. The punch list is in [`docs/roadmap.md`](docs/roadmap.md), organized in four tiers by cheapness × leverage.
+**V1 — complete the generation flow.** Context capture is done. The remaining work is the user-facing generation UX: text prompt input, 4-thumbnail grid, style-based regeneration, and save. Tasks are listed in dependency order in [`docs/roadmap.md`](docs/roadmap.md).
 
-When starting new work, prefer a task that closes an open tier-1 box. If you think a later-tier item should jump the queue, say why in the PR. Update `docs/roadmap.md` when you finish a box or discover a new gap.
+When starting new work, pick the next open task from the roadmap in order. Task B (multi-image generation) is the only breaking change — it must ship together with the `ActionBar.tsx` and `App.tsx` updates. Update `docs/roadmap.md` when a task is done or a new gap is found.
 
 ## The bar for "done"
 

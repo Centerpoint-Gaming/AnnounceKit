@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { extractPaletteFromImageData } from '../src/palette.js';
-import { decodeImageToRgba } from './helpers/load-image.js';
+import { extractPaletteFromImageData } from '../../src/palette/index.js';
+import { decodeImageToRgba } from '../helpers/load-image.js';
 
-const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), 'fixtures');
+const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), '..', 'fixtures');
 
 describe('extractPaletteFromImageData', () => {
   it('extracts a stable palette from the Crosshair X (1366800) capsule', async () => {

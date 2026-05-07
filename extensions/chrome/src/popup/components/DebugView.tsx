@@ -241,9 +241,32 @@ export function DebugView({ context, profile, storeMetadata, cacheEntry }: Debug
           {/* Brand assets */}
           <div>
             <span className="text-xs text-gray-500 block mb-1">Brand Assets</span>
-            <Field label="Logos" value={profile.brand.logos.length} />
+            <Field label="Total" value={profile.brand.brandAssets.length} />
+            <Field
+              label="Uploads"
+              value={profile.brand.brandAssets.filter((a) => a.source === 'upload').length}
+            />
+            <Field
+              label="From Steam"
+              value={profile.brand.brandAssets.filter((a) => a.source === 'steam').length}
+            />
+            <Field
+              label="Logos"
+              value={profile.brand.brandAssets.filter((a) => a.role === 'logo').length}
+            />
+            <Field
+              label="Characters"
+              value={profile.brand.brandAssets.filter((a) => a.role === 'character').length}
+            />
+            <Field
+              label="Environment"
+              value={profile.brand.brandAssets.filter((a) => a.role === 'environment').length}
+            />
+            <Field
+              label="Mood"
+              value={profile.brand.brandAssets.filter((a) => a.role === 'mood').length}
+            />
             <Field label="Custom Colors" value={profile.brand.colors.length} />
-            <Field label="Example Thumbnails" value={profile.brand.exampleThumbnails.length} />
           </div>
 
           {/* Store assets */}

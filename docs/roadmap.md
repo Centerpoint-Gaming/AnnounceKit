@@ -1,54 +1,115 @@
-# AnnounceKit roadmap — closing the image-gen data gaps
+# AnnounceKit roadmap
 
-**Current milestone: V1.5 — context capture is shipping. Now we fill the gaps that will bottleneck image generation.**
+**End goal:** User is on a Steam announcement page. The extension has captured the necessary context. The user describes the thumbnail they want via a text input, hits generate, sees 4 options in a grid, picks one, and can regenerate in that style or save it.
 
-The V1 pipeline captures enough to *display* a game profile. It does not yet capture enough to hand a modern image generator (Flux, Ideogram, Nano Banana, Seedream, Imagen, etc.) a prompt + reference set that produces on-brand results. This roadmap is the punch list for that.
-
-Tiers are ordered by "cheapness × leverage." Work the top of tier 1 first. Don't start a tier-3 item while tier-1 boxes are unchecked unless you have a specific reason — note it in the PR.
+**Image generator:** Gemini (current). Architecture keeps generation behind a contract so the provider can be swapped.
 
 ---
 
-## Tier 1 — Extend what we already fetch
+## Context currently captured
 
-No new pipeline stages. Every item is "parse a field we're already ignoring" or "follow one URL we already know."
+This is what the extension captures today and passes to the prompt builder / generator.
 
-- [ ] **Fetch `library_logo.png`** and populate `GameProfile.storeAssets.logo`. The URL follows the same CDN pattern as `library_hero`. This is the single most useful asset for generation — it lets us composite the real wordmark instead of relying on the model to spell it.
-- [ ] **Re-base palette extraction on `library_hero.jpg`** instead of `header.jpg`. Header has the wordmark baked in, which contaminates `accent`/`neutral`. Hero is the clean, subject-isolated render.
-- [ ] **Keep `detailedDescription`** (strip HTML, cap to ~1–2KB) alongside `shortDescription`. Genres are keywords; the description is the studio's own voice.
-- [ ] **Populate `brand.exampleThumbnails` from `parsePartnerEventStore`.** The parser already sees past events and their `localized_title_image` / `localized_capsule_image` URLs — just persist them.
-- [ ] **Map `eventType: number` to an enum** (`major-update`, `patch`, `sale`, `seasonal`, `cross-promo`, …). Generation intent differs by event type.
-- [ ] **Pass-through fields from the API we currently drop:** `overall_reviews` / `recommendations.total` (sentiment), `required_age` (content rating), `supported_languages` (locale hints).
+**From the Steam store API:**
+- Game name, short description, tags, genres, categories
+- Release status (`released` | `early-access` | `coming-soon` | `unknown`), release date
+- Developer, publisher
+- Asset URLs: header capsule, library hero, logo, screenshots, background
 
-## Tier 2 — Reference asset pipeline
+**From the Steam announcement page:**
+- Is announcement editor active (`isAnnouncementEditor`)
+- Existing title, subtitle, body text from the editor fields
+- Event type (raw number), event name
+- Localized title image + capsule image URLs from past event data
 
-Image generators want bytes, not URLs. This tier is the path from "we know the URL" to "we can hand the generator a reference image."
+**Brand assets (user-managed):**
+- User-uploaded images stored in IndexedDB (content-addressed by SHA-256)
+- Steam assets the user promotes into the bucket (`source: 'steam'`)
+- Each asset has a role: `logo` | `character` | `environment` | `mood` | `other`
+- Palette: dominant colors, vibrancy, luminance (extracted from header capsule)
 
-- [ ] **Fetch and store image bytes as `dataUrl`** for hero, logo, and the top 2–3 example thumbnails. `StoredAsset.dataUrl` already exists on the type.
-- [ ] **Define target aspect ratios** (Steam capsule 460×215, event banner, square social) and the asset-selection rule for each.
-- [ ] **Fixture coverage for more shapes:** at least one coming-soon game (no release date), one free-to-play, one with no library_logo, one early-access. Current fixture is Crosshair X only and won't catch schema edges.
+---
 
-## Tier 3 — Analysis layers
+## Completed
 
-Derived signal from the assets we've captured. Each item is a pure-core contract that takes pixels/URLs and returns structured data.
+- [x] Store metadata extraction (`fetchStoreMetadata`)
+- [x] Announcement page context extraction (`PageContext`, `SteamEventData`)
+- [x] Brand asset bucketing — roles, dedup, add/remove/rename helpers
+- [x] IndexedDB `BinaryStore` — content-addressed byte storage
+- [x] Download store assets → promote to brand assets (UI: `BrandAssets.tsx`)
+- [x] Single thumbnail generation via Gemini (`generateThumbnail`)
+- [x] Prompt builder (`buildPromptFromContext`)
+- [x] User prompt input (Task A) — `userPrompt` plumbed from ActionBar textarea through to Gemini
+- [x] Generation UI text input + trigger (Task C) — multi-line textarea above Generate button
+- [x] Reference Images bucket — separate from Brand Assets, framed as approved-layout templates the model should match (composition/framing); brand assets reframed as identity ingredients to incorporate (not copy verbatim)
 
-- [ ] **VLM caption of hero + top screenshots.** One line of "what's in this image" is worth more than any number of tags for prompt synthesis.
-- [ ] **Per-screenshot palette + blended palette** across hero and top N screenshots, so the palette represents in-engine aesthetic, not just the key-art render.
-- [ ] **Screenshot ranking / dedup.** Not all 8 screenshots are equally useful as references. Rank by distinctiveness, subject clarity, size.
-- [ ] **Mood / style classification** derived from tags + description + palette (e.g. "dark-gritty-realistic" vs "cozy-pastel-stylized").
+---
 
-## Tier 4 — Generation-ready synthesis
+## V1 — Complete the generation flow
 
-Turning captured data into something a generator will act on well.
+Tasks are ordered by dependency. Each task notes whether it touches `packages/core` (core) or `extensions/chrome` (extension), and what it would break if changed.
 
-- [ ] **Prompt template** combining name, caption, tone words, event type, brand notes.
-- [ ] **Genre/tag → style-descriptor map** (so "First-Person Shooter" + "Gritty" → visual-style words a generator understands).
-- [ ] **Aspect-ratio-aware reference selection** — which asset to feed for a square thumbnail vs a wide banner.
+### Task A — User prompt input [core] ✅ done
+Add an optional `userPrompt: string` field to `GenerateThumbnailOptions`.
+Pass it through to the Gemini request alongside the auto-built context prompt.
+- Depends on: nothing
+- Breaking: no
+
+### Task B — Multi-image generation [core]
+Change `generateThumbnail` to return `GeneratedThumbnail[]` (N=4) instead of a single result.
+- Depends on: Task A (or parallel)
+- Breaking: **yes** — `ActionBar.tsx` and `App.tsx` consume the return type and need updates at the same time
+
+### Task C — Generation UI: text input + trigger [extension] ✅ done
+Replace the current bare "Generate Thumbnail" button in `ActionBar.tsx` with a text input where the user describes what they want, plus the generate button.
+- Depends on: Task A
+- Breaking: no (ActionBar is self-contained)
+
+### Task D — 4-thumbnail grid UI [extension]
+New component that displays the 4 returned thumbnails in a 2×2 grid.
+User can click one to select it.
+- Depends on: Task B + Task C
+- Breaking: no (new component)
+
+### Task E — Regenerate in style [extension]
+When the user selects a thumbnail from the grid, offer a "Regenerate" button.
+Re-sends the same prompt with the selected image attached as a style reference.
+No new core work — uses existing `ThumbnailReference` field in `GenerateThumbnailOptions`.
+- Depends on: Task D
+- Breaking: no
+
+### Task F — Save thumbnail [extension]
+From the grid selection, offer a "Save" action.
+Download the image to disk via the browser download API.
+- Depends on: Task D
+- Breaking: no
 
 ---
 
 ## How to pick the next task
 
-1. Is there an open tier-1 box? Pick one.
-2. If tier 1 is clean, pick the tier-2 item that unblocks the most tier-3 work.
-3. Each item lands as its own contract in `packages/core` (or as a field extension to an existing contract) with fixtures + tests. See `CLAUDE.md` for the contract/verify workflow.
-4. Update this file when you finish a box or discover a new gap.
+1. Work tasks in the order A → B → C+D (parallel) → E → F.
+2. B is the only breaking change — do not ship B without updating `ActionBar.tsx` and `App.tsx` in the same PR.
+3. Each core change lands as a contract extension with fixtures + tests. See `CLAUDE.md` for the verify workflow.
+4. Update this file when a task is done or a new gap is discovered.
+
+---
+
+## V1.5 — Iterative refinement
+
+**Goal.** After a thumbnail is generated, the user can issue follow-up instructions ("make the character bigger, drop the corner text") and get a new image that preserves the prior composition where not asked to change. Image models won't honor "no text" or other guards perfectly on a single shot, so the iterative loop is how users actually reach the final result.
+
+### Task G — Edit contract [core] ✅ done
+New contract `editThumbnail` in `packages/core/src/thumbnail/edit.ts`. Takes a prior image + instruction + role-tagged auxiliary references; returns a new `EditedThumbnail`. Reuses the same Gemini transport as `generateThumbnail` but with a distinct prompt shape: instruction-anchored, with a preservation guard and the shared `NO_TEXT_RULE`. `EditReferenceRole` covers `pose | item | character | environment | style | other` so the prompt addresses each attachment with a role-specific clause.
+- Depends on: nothing
+- Breaking: no
+
+### Task H — Edit UI surface [extension] ✅ done
+`ThumbnailEditor.tsx` renders below `ActionBar` once a thumbnail is ready. Provides:
+- An instruction textarea + "Apply edit" button
+- Optional reference attachments via file picker, each with a role dropdown + free-form note
+- A horizontal version strip showing the compounding chain; clicking a past version makes it the priorImage for the next edit (chatbot-style fork)
+
+`App.tsx` owns the in-memory `editChain: ChainNode[]` + `currentIndex`. The service worker exposes an `EDIT_THUMBNAIL` message that decodes the prior data URL, calls `editThumbnail`, and persists the result via `BinaryStore` + `ThumbnailCache` so edits show up in the existing `ThumbnailHistory`.
+- Depends on: Task G + Task D
+- Breaking: no
